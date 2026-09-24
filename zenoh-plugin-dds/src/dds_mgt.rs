@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize, Serializer};
 use tracing::{debug, error, warn};
 use zenoh::{
     bytes::ZBytes,
-    key_expr::{KeyExpr, OwnedKeyExpr},
+    key_expr::{keyexpr, KeyExpr, OwnedKeyExpr},
     qos::CongestionControl,
     Session, Wait,
 };
@@ -261,6 +261,17 @@ unsafe extern "C" fn on_data(dr: dds_entity_t, arg: *mut std::os::raw::c_void) {
                     if topic_name.starts_with("DCPS") {
                         debug!(
                             "Ignoring discovery of {} ({} is a builtin topic)",
+                            key, topic_name
+                        );
+                        continue;
+                    }
+                    // The topic name becomes a chunk of the entity's admin space and route key
+                    // expressions, which are unwrapped by the discovery task. A name that is not a
+                    // valid key expression (e.g. a leading '/') would panic that task and stop all
+                    // routing, so skip the entity instead.
+                    if keyexpr::new(topic_name).is_err() {
+                        warn!(
+                            "Ignoring discovery of {} ({} is not a valid key expression)",
                             key, topic_name
                         );
                         continue;
