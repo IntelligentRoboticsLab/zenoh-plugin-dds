@@ -616,7 +616,10 @@ unsafe fn create_topic(
                 dds_delete_topic_descriptor(descriptor);
                 topic
             } else {
-                ret
+                tracing::debug!(
+                    "dds_create_topic_descriptor failed ({ret}) for {topic_name}; falling back to blob topic"
+                );
+                cdds_create_blob_topic(dp, cton, ctyn, keyless)
             }
         }
     };
